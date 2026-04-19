@@ -1,0 +1,31 @@
+/*
+   Commands to run:
+   actsim -Wlang_subst:off testbench_activation_sigmoid.act test_activation_sigmoid
+*/
+
+import "ann_components.act";
+
+defproc sigmoid_activation_check (chan!(int<16>) IN; chan?(int<8>) OUT)
+{
+  int<16> x;
+  int<8>  y;
+
+  chp {
+    x := 0; IN!x; OUT?y; assert(y = 0);
+    x := 2; IN!x; OUT?y; assert(y = 0);
+    x := 3; IN!x; OUT?y; assert(y = 2);
+    x := 4; IN!x; OUT?y; assert(y = 4);
+    x := 5; IN!x; OUT?y; assert(y = 4)
+  }
+}
+
+export defproc test_activation_sigmoid ()
+{
+  chan(int<16>) s_in;
+  chan(int<8>)  s_out;
+  sigmoid_activation dut;
+  sigmoid_activation_check t(s_in, s_out);
+
+  dut.IN  = s_in;
+  dut.OUT = s_out;
+}

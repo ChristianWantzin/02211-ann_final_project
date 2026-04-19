@@ -1,0 +1,25 @@
+/*
+   Commands to run:
+   actsim -Wlang_subst:off testbench_ann_sigmoid_full.act test_ann_sigmoid_full
+*/
+
+import "ann_components.act";
+
+defproc ann_sigmoid_full_check (chan!(int<8>) IN1; chan!(int<8>) IN2; chan?(int<8>) OUT)
+{
+  int<8> y;
+
+  chp {
+    /* XOR truth table: Sigmoid approximation */
+    IN1!0; IN2!0; OUT?y; assert(y = 0);
+    IN1!0; IN2!1; OUT?y; assert(y = 4);
+    IN1!1; IN2!0; OUT?y; assert(y = 4);
+    IN1!1; IN2!1; OUT?y; assert(y = 0)
+  }
+}
+
+export defproc test_ann_sigmoid_full ()
+{
+  ANNSigmoid               dut;
+  ann_sigmoid_full_check   t(dut.IN1, dut.IN2, dut.OUT);
+}

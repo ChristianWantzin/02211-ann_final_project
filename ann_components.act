@@ -1,0 +1,249 @@
+/*
+ * ann_components.act
+ *
+ * Minimal working asynchronous ANN-style project components.
+ * This version is written to be parser-safe for the local ACT setup
+ * and to avoid mutex violations in guarded commands.
+ */
+
+/* activation function: step on a positive encoded domain
+ *
+ * This ACT setup is happiest when we avoid signed intermediate values, so the
+ * network encodes neuron sums into a non-negative range. Values 3 and above are
+ * treated as logical true.
+ */
+defproc step_activation (chan?(int<16>) IN; chan!(int<8>) OUT)
+{
+  int<16> x;
+  int<8>  y;
+
+  chp {
+    *[
+      IN?x;
+      y := 0;
+      [ x >= 3 -> y := 1
+      [] x < 3 -> skip
+      ];
+      OUT!y
+    ]
+  }
+}
+
+/* activation function: relu on the same positive encoded domain
+ *
+ * Values up to 2 are treated as inactive; larger values are shifted down so
+ * the active magnitude remains small and easy to combine in later stages.
+ */
+defproc relu_activation (chan?(int<16>) IN; chan!(int<8>) OUT)
+{
+  int<16> x;
+  int<8>  y;
+
+  chp {
+    *[
+      IN?x;
+      y := 0;
+      [ x > 2  -> y := x - 2
+      [] x <= 2 -> skip
+      ];
+      OUT!y
+    ]
+  }
+}
+
+/* activation function: piecewise linear sigmoid approximation
+ *
+ * mapping on the encoded non-negative domain:
+ *   x <= 2 -> 0
+ *   x = 3  -> 2
+ *   x >= 4 -> 4
+ *
+ * Written as sequential guarded updates to avoid overlapping-guard mutex errors.
+ */
+defproc sigmoid_activation (chan?(int<16>) IN; chan!(int<8>) OUT)
+{
+  int<16> x;
+  int<8>  y;
+
+  chp {
+    *[
+      IN?x;
+      y := 0;
+      [ x = 3  -> y := 2 [] x != 3  -> skip ];
+      [ x >= 4 -> y := 4 [] x < 4   -> skip ];
+      OUT!y
+    ]
+  }
+}
+
+/*
+ * Working top-level network variants.
+ *
+ * These exported processes keep the same interface as before, so the existing
+ * testbenches still work. They are written directly and conservatively so they
+ * simulate reliably under the local ACT parser/runtime.
+ */
+
+/* Step variant: 2-2-1 XOR on boolean inputs using positive-only encoded sums.
+ *
+ * For x in {0,1}, the hidden-layer detectors are equivalent to the signed forms
+ *   2*x1 - 2*x2 + 2   and   2*x2 - 2*x1 + 2
+ * but rewritten to avoid negative intermediates:
+ *   h1_sum = 2*x1 + 2*(1-x2)
+ *   h2_sum = 2*x2 + 2*(1-x1)
+ *
+ * These evaluate to:
+ *   active XOR branch -> 4
+ *   equal inputs      -> 2
+ *   opposite branch   -> 0
+ */
+export defproc ANNStep (chan?(int<8>) IN1; chan?(int<8>) IN2; chan!(int<8>) OUT)
+{
+  int<8> x1;
+  int<8> x2;
+  int<8> h1;
+  int<8> h2;
+  int<8> y;
+  int<16> h1_sum;
+  int<16> h2_sum;
+  int<16> y_sum;
+
+  chan(int<16>) h1_in;
+  chan(int<16>) h2_in;
+  chan(int<16>) y_in;
+  chan(int<8>) h1_out;
+  chan(int<8>) h2_out;
+  chan(int<8>) y_out;
+
+  step_activation hidden1;
+  step_activation hidden2;
+  step_activation output_act;
+
+  chp {
+    *[
+      IN1?x1;
+      IN2?x2;
+
+      h1_sum := (2 * x1) + (2 * (1 - x2));
+      h2_sum := (2 * x2) + (2 * (1 - x1));
+
+      h1_in!h1_sum;
+      h2_in!h2_sum;
+      h1_out?h1;
+      h2_out?h2;
+
+      y_sum := h1 + h2 + 2;
+      y_in!y_sum;
+      y_out?y;
+      OUT!y
+    ]
+  }
+
+  hidden1.IN = h1_in;
+  hidden1.OUT = h1_out;
+  hidden2.IN = h2_in;
+  hidden2.OUT = h2_out;
+  output_act.IN = y_in;
+  output_act.OUT = y_out;
+}
+
+export defproc ANNReLU (chan?(int<8>) IN1; chan?(int<8>) IN2; chan!(int<8>) OUT)
+{
+  int<8> x1;
+  int<8> x2;
+  int<8> h1;
+  int<8> h2;
+  int<8> y;
+  int<16> h1_sum;
+  int<16> h2_sum;
+  int<16> y_sum;
+
+  chan(int<16>) h1_in;
+  chan(int<16>) h2_in;
+  chan(int<16>) y_in;
+  chan(int<8>) h1_out;
+  chan(int<8>) h2_out;
+  chan(int<8>) y_out;
+
+  relu_activation hidden1;
+  relu_activation hidden2;
+  relu_activation output_act;
+
+  chp {
+    *[
+      IN1?x1;
+      IN2?x2;
+
+      h1_sum := (2 * x1) + (2 * (1 - x2));
+      h2_sum := (2 * x2) + (2 * (1 - x1));
+
+      h1_in!h1_sum;
+      h2_in!h2_sum;
+      h1_out?h1;
+      h2_out?h2;
+
+      y_sum := h1 + h2 + 1;
+      y_in!y_sum;
+      y_out?y;
+      OUT!y
+    ]
+  }
+
+  hidden1.IN = h1_in;
+  hidden1.OUT = h1_out;
+  hidden2.IN = h2_in;
+  hidden2.OUT = h2_out;
+  output_act.IN = y_in;
+  output_act.OUT = y_out;
+}
+
+/* Sigmoid-approx variant: scaled 2-2-1 XOR pipeline on the encoded domain. */
+export defproc ANNSigmoid (chan?(int<8>) IN1; chan?(int<8>) IN2; chan!(int<8>) OUT)
+{
+  int<8> x1;
+  int<8> x2;
+  int<8> h1;
+  int<8> h2;
+  int<8> y;
+  int<16> h1_sum;
+  int<16> h2_sum;
+  int<16> y_sum;
+
+  chan(int<16>) h1_in;
+  chan(int<16>) h2_in;
+  chan(int<16>) y_in;
+  chan(int<8>) h1_out;
+  chan(int<8>) h2_out;
+  chan(int<8>) y_out;
+
+  sigmoid_activation hidden1;
+  sigmoid_activation hidden2;
+  sigmoid_activation output_act;
+
+  chp {
+    *[
+      IN1?x1;
+      IN2?x2;
+
+      h1_sum := (2 * x1) + (2 * (1 - x2));
+      h2_sum := (2 * x2) + (2 * (1 - x1));
+
+      h1_in!h1_sum;
+      h2_in!h2_sum;
+      h1_out?h1;
+      h2_out?h2;
+
+      y_sum := h1 + h2;
+      y_in!y_sum;
+      y_out?y;
+      OUT!y
+    ]
+  }
+
+  hidden1.IN = h1_in;
+  hidden1.OUT = h1_out;
+  hidden2.IN = h2_in;
+  hidden2.OUT = h2_out;
+  output_act.IN = y_in;
+  output_act.OUT = y_out;
+}

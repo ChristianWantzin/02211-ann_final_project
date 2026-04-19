@@ -1,0 +1,32 @@
+/*
+   Commands to run:
+   actsim -Wlang_subst:off testbench_ann_sigmoid_edges.act test_ann_sigmoid_edges
+*/
+
+import "ann_components.act";
+
+defproc ann_sigmoid_edges_check (chan!(int<8>) IN1; chan!(int<8>) IN2; chan?(int<8>) OUT)
+{
+  int<8> x;
+  int<8> y;
+
+  chp {
+    /* lowest supported boolean input pair */
+    IN1!0;   IN2!0;   OUT?y; assert(y = 0);
+
+    /* highest supported boolean input pair */
+    IN1!1;   IN2!1;   OUT?y; assert(y = 0);
+
+    /* XOR-positive branch with IN2 dominant */
+    x := 0;  IN1!x;   IN2!1; OUT?y; assert(y = 4);
+
+    /* XOR-positive branch with IN1 dominant */
+    IN1!1;   IN2!0;   OUT?y; assert(y = 4)
+  }
+}
+
+export defproc test_ann_sigmoid_edges ()
+{
+  ANNSigmoid               dut;
+  ann_sigmoid_edges_check  t(dut.IN1, dut.IN2, dut.OUT);
+}

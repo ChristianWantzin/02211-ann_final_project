@@ -1,0 +1,31 @@
+/*
+   Commands to run:
+   actsim -Wlang_subst:off testbench_activation_step.act test_activation_step
+*/
+
+import "ann_components.act";
+
+defproc step_activation_check (chan!(int<16>) IN; chan?(int<8>) OUT)
+{
+  int<16> x;
+  int<8>  y;
+
+  chp {
+    x := 0; IN!x; OUT?y; assert(y = 0);
+    x := 2; IN!x; OUT?y; assert(y = 0);
+    x := 3; IN!x; OUT?y; assert(y = 1);
+    x := 4; IN!x; OUT?y; assert(y = 1);
+    x := 5; IN!x; OUT?y; assert(y = 1)
+  }
+}
+
+export defproc test_activation_step ()
+{
+  chan(int<16>) s_in;
+  chan(int<8>)  s_out;
+  step_activation dut;
+  step_activation_check t(s_in, s_out);
+
+  dut.IN  = s_in;
+  dut.OUT = s_out;
+}
