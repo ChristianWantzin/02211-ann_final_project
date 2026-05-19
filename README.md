@@ -24,12 +24,10 @@ integer domain to keep the CHP model compatible with the local ACT toolchain.
 ├── run_sim.spi
 ├── src/
 │   └── ann_components.act
-├── tests/
-│   ├── activation/
-│   ├── ann/
-│   └── exploratory/
-├── docs/
-└── tools/
+└── tests/
+    ├── activation/
+    ├── ann/
+    └── exploratory/
 ```
 
 The core implementation is in `src/ann_components.act`. The main regression
