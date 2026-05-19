@@ -28,8 +28,6 @@ integer domain to keep the CHP model compatible with the local ACT toolchain.
 │   ├── activation/
 │   ├── ann/
 │   └── exploratory/
-├── report/
-│   └── report.md
 ├── docs/
 └── tools/
 ```
@@ -43,7 +41,7 @@ kept separately in `tests/exploratory/`.
 Run these commands before using the Makefile:
 
 ```sh
-export ACT_HOME=/home/chrwa/schoolProjects/actflow/
+export ACT_HOME=$HOME/act-local
 export PATH=$PATH:$ACT_HOME/bin
 ```
 
@@ -84,12 +82,12 @@ Optional exploratory tests:
 make edges
 ```
 
-## Verified Baseline
+## Verified Results
 
 Verified on 2026-05-19 with:
 
 ```sh
-export ACT_HOME=/home/chrwa/schoolProjects/actflow/
+export ACT_HOME=$HOME/act-local
 export PATH=$PATH:$ACT_HOME/bin
 make clean
 make all
