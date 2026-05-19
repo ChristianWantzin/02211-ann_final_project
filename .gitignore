@@ -1,3 +1,8 @@
 course_material/
 .venv-course-material/
 tools/
+*.out
+*.txt
+.actsim_history
+docs/
+report/

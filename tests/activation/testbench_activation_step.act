@@ -3,7 +3,7 @@
    actsim -Wlang_subst:off testbench_activation_step.act test_activation_step
 */
 
-import "ann_components.act";
+import "../../src/ann_components.act";
 
 defproc step_activation_check (chan!(int<16>) IN; chan?(int<8>) OUT)
 {

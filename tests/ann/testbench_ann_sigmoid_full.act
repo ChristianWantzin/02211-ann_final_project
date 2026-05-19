@@ -3,7 +3,7 @@
    actsim -Wlang_subst:off testbench_ann_sigmoid_full.act test_ann_sigmoid_full
 */
 
-import "ann_components.act";
+import "../../src/ann_components.act";
 
 defproc ann_sigmoid_full_check (chan!(int<8>) IN1; chan!(int<8>) IN2; chan?(int<8>) OUT)
 {
